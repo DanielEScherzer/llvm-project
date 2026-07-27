@@ -1616,6 +1616,9 @@ void DAGTypeLegalizer::ExpandFloatResult(SDNode *N, unsigned ResNo) {
   case ISD::FCBRT:      ExpandFloatRes_FCBRT(N, Lo, Hi); break;
   case ISD::STRICT_FCEIL:
   case ISD::FCEIL:      ExpandFloatRes_FCEIL(N, Lo, Hi); break;
+  case ISD::CONVERT_FROM_ARBITRARY_FP:
+    ExpandFloatRes_CONVERT_FROM_ARBITRARY_FP(N, Lo, Hi);
+    break;
   case ISD::FCOPYSIGN:  ExpandFloatRes_FCOPYSIGN(N, Lo, Hi); break;
   case ISD::STRICT_FCOS:
   case ISD::FCOS:       ExpandFloatRes_FCOS(N, Lo, Hi); break;
@@ -2044,6 +2047,17 @@ void DAGTypeLegalizer::ExpandFloatRes_FP_EXTEND(SDNode *N, SDValue &Lo,
 
   if (IsStrict)
     ReplaceValueWith(SDValue(N, 1), Chain);
+}
+
+void DAGTypeLegalizer::ExpandFloatRes_CONVERT_FROM_ARBITRARY_FP(
+    SDNode *N, SDValue &Lo, SDValue &Hi) {
+  assert(N->getValueType(0) == MVT::ppcf128 && "Unsupported result type");
+  EVT NVT = TLI.getTypeToTransformTo(*DAG.getContext(), N->getValueType(0));
+  SDLoc dl(N);
+
+  Hi = DAG.getNode(ISD::CONVERT_FROM_ARBITRARY_FP, dl, NVT, N->getOperand(0),
+                   N->getOperand(1));
+  Lo = DAG.getConstantFP(APFloat::getZero(NVT.getFltSemantics()), dl, NVT);
 }
 
 void DAGTypeLegalizer::ExpandFloatRes_FPOW(SDNode *N,

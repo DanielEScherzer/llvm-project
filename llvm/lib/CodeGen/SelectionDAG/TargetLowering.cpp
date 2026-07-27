@@ -9723,6 +9723,16 @@ TargetLowering::expandCONVERT_FROM_ARBITRARY_FP(SDNode *Node,
     return SDValue();
   }
 
+  if (DstVT == MVT::f80) {
+    EVT IntermediateVT = MVT::f64;
+    SDValue Intermediate =
+        DAG.getNode(ISD::CONVERT_FROM_ARBITRARY_FP, dl, IntermediateVT, IntVal,
+                    Node->getOperand(1));
+    SDValue Expanded =
+        expandCONVERT_FROM_ARBITRARY_FP(Intermediate.getNode(), DAG);
+    return DAG.getNode(ISD::FP_EXTEND, dl, DstVT, Expanded);
+  }
+
   const fltSemantics &SrcSem = APFloatBase::EnumToSemantics(Sem);
   const unsigned SrcBits = APFloat::getSizeInBits(SrcSem);
   const unsigned SrcPrecision = APFloat::semanticsPrecision(SrcSem);

@@ -10,6 +10,8 @@ declare <4 x float> @llvm.convert.from.arbitrary.fp.v4f32.v4i4(<4 x i4>, metadat
 
 declare half @llvm.convert.from.arbitrary.fp.f16.i8(i8, metadata)
 declare double @llvm.convert.from.arbitrary.fp.f64.i8(i8, metadata)
+declare x86_fp80 @llvm.convert.from.arbitrary.fp.f80.i8(i8, metadata)
+declare <2 x x86_fp80> @llvm.convert.from.arbitrary.fp.v2f80.v2i8(<2 x i8>, metadata)
 
 ; Float8E5M2
 ; Layout: sign(1) exp(5) mant(2), bias=15
@@ -546,6 +548,170 @@ define double @from_f8e5m2_to_f64() {
 ; CHECK-NEXT:    retq
   %r = call double @llvm.convert.from.arbitrary.fp.f64.i8(i8 60, metadata !"Float8E5M2")
   ret double %r
+}
+
+define x86_fp80 @from_f8e5m2_to_f80(i8 %x) {
+; CHECK-LABEL: from_f8e5m2_to_f80:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    # kill: def $edi killed $edi def $rdi
+; CHECK-NEXT:    movl %edi, %eax
+; CHECK-NEXT:    andl $3, %eax
+; CHECK-NEXT:    bsrq %rax, %rsi
+; CHECK-NEXT:    movq %rax, %r8
+; CHECK-NEXT:    btcq %rsi, %r8
+; CHECK-NEXT:    xorl $63, %esi
+; CHECK-NEXT:    leal -11(%rsi), %ecx
+; CHECK-NEXT:    # kill: def $cl killed $cl killed $ecx
+; CHECK-NEXT:    shlq %cl, %r8
+; CHECK-NEXT:    movl %edi, %ecx
+; CHECK-NEXT:    shrl $7, %ecx
+; CHECK-NEXT:    shlq $63, %rcx
+; CHECK-NEXT:    movl $1070, %edx # imm = 0x42E
+; CHECK-NEXT:    subl %esi, %edx
+; CHECK-NEXT:    shlq $52, %rdx
+; CHECK-NEXT:    orq %rcx, %rdx
+; CHECK-NEXT:    orq %r8, %rdx
+; CHECK-NEXT:    shrl $2, %edi
+; CHECK-NEXT:    andl $31, %edi
+; CHECK-NEXT:    leal 1008(%rdi), %esi
+; CHECK-NEXT:    shlq $52, %rsi
+; CHECK-NEXT:    orq %rcx, %rsi
+; CHECK-NEXT:    movq %rax, %r8
+; CHECK-NEXT:    shlq $50, %r8
+; CHECK-NEXT:    orq %rsi, %r8
+; CHECK-NEXT:    testl %eax, %eax
+; CHECK-NEXT:    sete %al
+; CHECK-NEXT:    setne %sil
+; CHECK-NEXT:    testl %edi, %edi
+; CHECK-NEXT:    sete %r9b
+; CHECK-NEXT:    testb %sil, %r9b
+; CHECK-NEXT:    cmovneq %rdx, %r8
+; CHECK-NEXT:    testb %al, %r9b
+; CHECK-NEXT:    cmovneq %rcx, %r8
+; CHECK-NEXT:    movabsq $9218868437227405312, %rdx # imm = 0x7FF0000000000000
+; CHECK-NEXT:    orq %rcx, %rdx
+; CHECK-NEXT:    cmpq $31, %rdi
+; CHECK-NEXT:    sete %cl
+; CHECK-NEXT:    testb %al, %cl
+; CHECK-NEXT:    cmoveq %r8, %rdx
+; CHECK-NEXT:    testb %sil, %cl
+; CHECK-NEXT:    movabsq $9221120237041090560, %rax # imm = 0x7FF8000000000000
+; CHECK-NEXT:    cmoveq %rdx, %rax
+; CHECK-NEXT:    movq %rax, %xmm0
+; CHECK-NEXT:    movq %xmm0, -{{[0-9]+}}(%rsp)
+; CHECK-NEXT:    fldl -{{[0-9]+}}(%rsp)
+; CHECK-NEXT:    retq
+  %r = call x86_fp80 @llvm.convert.from.arbitrary.fp.f80.i8(i8 %x, metadata !"Float8E5M2")
+  ret x86_fp80 %r
+}
+
+define void @from_f8e5m2_to_v2f80(ptr %dst, <2 x i8> %x) {
+; CHECK-LABEL: from_f8e5m2_to_v2f80:
+; CHECK:       # %bb.0:
+; CHECK-NEXT:    pushq %rbx
+; CHECK-NEXT:    .cfi_def_cfa_offset 16
+; CHECK-NEXT:    .cfi_offset %rbx, -16
+; CHECK-NEXT:    movd %xmm0, %eax
+; CHECK-NEXT:    movl %eax, %esi
+; CHECK-NEXT:    shrl $8, %esi
+; CHECK-NEXT:    andl $3, %esi
+; CHECK-NEXT:    bsrq %rsi, %r9
+; CHECK-NEXT:    movq %rsi, %r10
+; CHECK-NEXT:    btcq %r9, %r10
+; CHECK-NEXT:    xorl $63, %r9d
+; CHECK-NEXT:    leal -11(%r9), %ecx
+; CHECK-NEXT:    # kill: def $cl killed $cl killed $ecx
+; CHECK-NEXT:    shlq %cl, %r10
+; CHECK-NEXT:    movl %eax, %ecx
+; CHECK-NEXT:    shrl $15, %ecx
+; CHECK-NEXT:    shlq $63, %rcx
+; CHECK-NEXT:    movl $1070, %edx # imm = 0x42E
+; CHECK-NEXT:    movl $1070, %r8d # imm = 0x42E
+; CHECK-NEXT:    subl %r9d, %r8d
+; CHECK-NEXT:    shlq $52, %r8
+; CHECK-NEXT:    orq %rcx, %r8
+; CHECK-NEXT:    orq %r10, %r8
+; CHECK-NEXT:    movl %eax, %r9d
+; CHECK-NEXT:    shrl $10, %r9d
+; CHECK-NEXT:    andl $31, %r9d
+; CHECK-NEXT:    leal 1008(%r9), %r10d
+; CHECK-NEXT:    shlq $52, %r10
+; CHECK-NEXT:    orq %rcx, %r10
+; CHECK-NEXT:    movq %rsi, %r11
+; CHECK-NEXT:    shlq $50, %r11
+; CHECK-NEXT:    orq %r10, %r11
+; CHECK-NEXT:    testl %esi, %esi
+; CHECK-NEXT:    sete %r10b
+; CHECK-NEXT:    setne %bl
+; CHECK-NEXT:    testl %r9d, %r9d
+; CHECK-NEXT:    sete %sil
+; CHECK-NEXT:    testb %bl, %sil
+; CHECK-NEXT:    cmovneq %r8, %r11
+; CHECK-NEXT:    testb %r10b, %sil
+; CHECK-NEXT:    cmovneq %rcx, %r11
+; CHECK-NEXT:    movabsq $9218868437227405312, %rsi # imm = 0x7FF0000000000000
+; CHECK-NEXT:    orq %rsi, %rcx
+; CHECK-NEXT:    cmpq $31, %r9
+; CHECK-NEXT:    sete %r8b
+; CHECK-NEXT:    testb %r10b, %r8b
+; CHECK-NEXT:    cmoveq %r11, %rcx
+; CHECK-NEXT:    testb %bl, %r8b
+; CHECK-NEXT:    movabsq $9221120237041090560, %r8 # imm = 0x7FF8000000000000
+; CHECK-NEXT:    cmovneq %r8, %rcx
+; CHECK-NEXT:    movq %rcx, %xmm0
+; CHECK-NEXT:    movq %xmm0, -{{[0-9]+}}(%rsp)
+; CHECK-NEXT:    movl %eax, %r9d
+; CHECK-NEXT:    andl $3, %r9d
+; CHECK-NEXT:    bsrq %r9, %r10
+; CHECK-NEXT:    movq %r9, %r11
+; CHECK-NEXT:    btcq %r10, %r11
+; CHECK-NEXT:    xorl $63, %r10d
+; CHECK-NEXT:    leal -11(%r10), %ecx
+; CHECK-NEXT:    # kill: def $cl killed $cl killed $ecx
+; CHECK-NEXT:    shlq %cl, %r11
+; CHECK-NEXT:    movl %eax, %ecx
+; CHECK-NEXT:    shrl $7, %ecx
+; CHECK-NEXT:    shlq $63, %rcx
+; CHECK-NEXT:    subl %r10d, %edx
+; CHECK-NEXT:    shlq $52, %rdx
+; CHECK-NEXT:    orq %rcx, %rdx
+; CHECK-NEXT:    orq %r11, %rdx
+; CHECK-NEXT:    shrl $2, %eax
+; CHECK-NEXT:    andl $31, %eax
+; CHECK-NEXT:    leal 1008(%rax), %r10d
+; CHECK-NEXT:    shlq $52, %r10
+; CHECK-NEXT:    orq %rcx, %r10
+; CHECK-NEXT:    movq %r9, %r11
+; CHECK-NEXT:    shlq $50, %r11
+; CHECK-NEXT:    orq %r10, %r11
+; CHECK-NEXT:    testl %r9d, %r9d
+; CHECK-NEXT:    sete %r9b
+; CHECK-NEXT:    setne %r10b
+; CHECK-NEXT:    testl %eax, %eax
+; CHECK-NEXT:    sete %bl
+; CHECK-NEXT:    testb %r10b, %bl
+; CHECK-NEXT:    cmovneq %rdx, %r11
+; CHECK-NEXT:    testb %r9b, %bl
+; CHECK-NEXT:    cmovneq %rcx, %r11
+; CHECK-NEXT:    orq %rsi, %rcx
+; CHECK-NEXT:    cmpq $31, %rax
+; CHECK-NEXT:    sete %al
+; CHECK-NEXT:    testb %r9b, %al
+; CHECK-NEXT:    cmoveq %r11, %rcx
+; CHECK-NEXT:    testb %r10b, %al
+; CHECK-NEXT:    cmovneq %r8, %rcx
+; CHECK-NEXT:    movq %rcx, %xmm0
+; CHECK-NEXT:    movq %xmm0, -{{[0-9]+}}(%rsp)
+; CHECK-NEXT:    fldl -{{[0-9]+}}(%rsp)
+; CHECK-NEXT:    fldl -{{[0-9]+}}(%rsp)
+; CHECK-NEXT:    fstpt (%rdi)
+; CHECK-NEXT:    fstpt 10(%rdi)
+; CHECK-NEXT:    popq %rbx
+; CHECK-NEXT:    .cfi_def_cfa_offset 8
+; CHECK-NEXT:    retq
+  %r = call <2 x x86_fp80> @llvm.convert.from.arbitrary.fp.v2f80.v2i8(<2 x i8> %x, metadata !"Float8E5M2")
+  store <2 x x86_fp80> %r, ptr %dst
+  ret void
 }
 
 declare bfloat @llvm.convert.from.arbitrary.fp.bf16.i8(i8, metadata)
