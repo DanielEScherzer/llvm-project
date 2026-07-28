@@ -1010,23 +1010,23 @@ void SPIRVNonSemanticDebugHandler::notifyEntryLabelEmitted(
   tryEmitDebugFunctionDefinition(*CurrentMAI);
 }
 
-bool SPIRVNonSemanticDebugHandler::emitNonSemanticGlobalDebugInfo(
+void SPIRVNonSemanticDebugHandler::emitNonSemanticGlobalDebugInfo(
     SPIRV::ModuleAnalysisInfo &MAI) {
   if (GlobalDIEmitted)
-    return GlobalNSDIEnabled;
+    return;
 
   GlobalDIEmitted = true;
 
   if (CompileUnits.empty()) {
     GlobalNSDIEnabled = false;
-    return false;
+    return;
   }
 
   // Retrieve the ext inst set register allocated by prepareModuleOutput().
   MCRegister ExtInstSetReg = MAI.getExtInstSetReg(NSSet);
   if (!ExtInstSetReg.isValid()) {
     GlobalNSDIEnabled = false;
-    return false;
+    return;
   }
 
 #ifndef NDEBUG
@@ -1172,7 +1172,6 @@ bool SPIRVNonSemanticDebugHandler::emitNonSemanticGlobalDebugInfo(
                             MAI);
 
   GlobalNSDIEnabled = true;
-  return true;
 }
 
 SmallString<128>
